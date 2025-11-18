@@ -1,0 +1,50 @@
+# Trainer hyperparameters, for Trainer and lit_module
+seed: 42
+train_steps: 30000
+val_interval: 1000
+sample_interval: 1000
+max_log_examples: 8
+overfit_batches: 0
+wandb_project: "realchords"
+log_every_n_steps: 1
+checkpoint_interval: 1000
+checkpoint_metric: "val/loss"
+checkpoint_mode: "min"
+checkpoint_top_k: -1 # save all checkpoints
+accelerator: "auto"
+devices: "auto"
+num_nodes: 1
+precision: "bf16-mixed"
+strategy: "auto"
+compile: True
+
+# Data hyperparameters, for get_weighted_dataloader
+batch_size: 64
+num_workers: 8
+cache_dir: "data/cache"
+chord_names_path: "data/cache/chord_names_augmented.json"
+model_part: "melody"
+model_type: "encoder_decoder"
+max_len: 512
+datasets: ["hooktheory", "wikifonia", "pop909", "nottingham"]
+weights: [0.5, 0.2, 0.2, 0.1]
+data_augmentation: true
+
+# Optimizer hyperparameters
+AdamW.lr: 0.0001
+AdamW.weight_decay: 0.0
+
+# Model hyperparameters
+EncoderDecoderTransformer.enc_dim: 512
+EncoderDecoderTransformer.dec_dim: 512
+EncoderDecoderTransformer.enc_depth: 8
+EncoderDecoderTransformer.dec_depth: 8
+EncoderDecoderTransformer.enc_heads: 8
+EncoderDecoderTransformer.dec_heads: 8
+EncoderDecoderTransformer.enc_max_seq_len: 258 # bos, eos
+EncoderDecoderTransformer.dec_max_seq_len: 258 # bos, eos
+EncoderDecoderTransformer.dropout: 0.1
+EncoderDecoderTransformer.attention_layer_configs:
+  "rel_pos_bias": True
+  "rotary_pos_emb": False
+  "attn_flash": False

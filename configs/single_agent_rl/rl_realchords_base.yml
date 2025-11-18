@@ -1,0 +1,127 @@
+# Base config for all RL RealChords experiments.
+
+chord_names_path: "data/cache/chord_names_augmented.json"
+data_path: "data/hooktheory/Hooktheory.json.gz"
+
+# Checkpoint / Validation
+logging_steps: 1 # Log every step
+eval_steps: 200
+save_steps: -1
+limit_eval_batches: 8
+max_log_examples: 8
+
+# Episode Maker & Training
+# num_steps: how many steps to train in total.
+# This step is the total number of times we generated a new episode with rollout_batch_size samples.
+# 1 new episode takes rollout_batch_size // micro_rollout_batch_size steps to generate
+#   and takes rollout_batch_size // train_batch_size steps to update the model,
+#   where each update consists of train_batch_size // micro_train_batch_size gradient accumulation steps.
+num_steps: 2000
+# max_epochs: for each inference episode, for all the things generated,
+#   how many epochs to train on the sampled episode.
+max_epochs: 1
+# micro_train_batch_size: the batch size for each step of actor training.
+#   Also the batch size for replay buffer sampling.
+micro_train_batch_size: 64
+# train_batch_size: total number of samples to train for one actual backward pass.
+# This means the each model forward pass at training will use
+#   micro_train_batch_size samples and one actual backward step will takes
+#   train_batch_size // micro_train_batch_size steps.
+# The gradient accumulation will be handled by the deepspeed engine.
+# And total number of backward steps is rollout_batch_size // train_batch_size.
+train_batch_size: 64
+# micro_rollout_batch_size: the batch size for generation. i.e. the number of
+#   samples to generate in one step.
+micro_rollout_batch_size: 64
+# rollout_batch_size: total number of samples to generate.
+rollout_batch_size: 64
+buffer_cpu_offload: false
+dataloader_pin_memory: false
+reward_vram_swap: false
+counterpart_vram_swap: false
+trainer_empty_cache: false
+logits_vram_swap: false
+
+# LR scheduling
+# This step is the total number of times we generated a new episode (see above).
+warmup_steps: 100 # if is float, it's a percentage of num_steps
+
+# Sampling
+top_p: 1.0
+temperature: 0.99
+
+# PPO & optimizer
+max_samples: 1000000
+max_norm: 1.0
+l2: 0.0 # weight decay
+eps_clip: 0.2
+# Disable value clip because we only train 1 step per inference episode.
+value_clip: null
+lambd: 0.95
+gamma: 1
+normalize_reward: true
+freezing_actor_steps: 0
+n_samples_per_prompt: 1
+save_value_network: false
+actor_learning_rate: !!float 5e-6
+critic_learning_rate: !!float 9e-5
+adam_betas:
+  - 0.9
+  - 0.95
+# A list of tuples (min, max) for each reward function.
+# This is used for clipping the overall reward (summed across all reward functions)
+#   to the range.
+# If None, no clipping is done.
+reward_clip_range: null
+packing_samples: false
+
+# Entropy loss
+entropy_loss_coef: 0.0
+
+# KL
+kl_target: null
+init_kl_coef: 0.001
+kl_horizon: 10000
+#http://joschu.net/blog/kl-approx.html
+use_kl_estimator_k3: false
+use_full_kl: true
+use_reverse_kl: false
+use_kl_loss: false
+kl_estimator: "k3"
+
+# Reinforce
+advantage_estimator: "gae_interleave"
+
+# DeepSpeed
+seed: 42
+local_rank: -1
+zero_stage: 0
+gradient_checkpointing: false
+bf16: true
+zpg: 1
+adam_offload: false
+actor_init_on_gpu: false
+flash_attn: true
+grad_accum_dtype: null
+disable_trace_cache: false
+gradient_checkpointing_use_reentrant: false
+
+# wandb
+use_wandb: "true" # if already logged, this can be any non-empty string
+wandb_org: null
+wandb_group: null
+wandb_project: "realchords"
+wandb_run_name: null # This will be filled in by the script
+use_tensorboard: false
+
+# Placeholder values needed by framework
+pretrain_data: null
+aux_loss_coef: 0.0
+
+# change: add save eval gen
+save_eval_gen: false
+
+lit_module_override_args:
+  chord_names_path: "data/cache/chord_names_augmented.json"
+  data_path: "data/hooktheory/Hooktheory.json.gz"
+  num_workers: 4

@@ -1,0 +1,27 @@
+numpy
+torch
+torchaudio
+transformers  # Optional, only used in base class
+peft  # Optional, only used in base class
+pretty_midi
+librosa
+matplotlib
+scipy
+tqdm
+pandas
+scikit-learn
+seaborn
+pqdm
+note_seq
+lightning
+wandb
+wget
+selenium
+argbind
+flask
+beautifulsoup4
+deepspeed==0.16.4
+bokeh==2.4.3
+x-transformers==2.1.2
+onnxruntime==1.21.0
+onnx==1.17.0

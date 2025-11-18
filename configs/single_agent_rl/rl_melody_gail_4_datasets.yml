@@ -1,0 +1,68 @@
+$include:
+  - configs/gen_models/decoder_only_online_melody_4_datasets.yml
+  - configs/single_agent_rl/rl_realchords_base.yml
+
+pretrain_model_path: "logs/decoder_only_online_melody_4_datasets/step=11000.ckpt"
+contrastive_reward_model_path: 
+  - "logs/contrastive_reward_4_datasets/step=8000.ckpt"
+  - "logs/contrastive_reward_2_4_datasets/step=8000.ckpt"
+discriminative_reward_model_path:
+  - "logs/discriminative_reward_128_bs_4_datasets/step=3000.ckpt"
+  - "logs/discriminative_reward_128_bs_2_4_datasets/step=3000.ckpt"
+contrastive_reward_rhythm_model_path:
+  - "logs/contrastive_reward_no_augmentation_rhythm_4_datasets/step=2500.ckpt"
+  - "logs/contrastive_reward_no_augmentation_rhythm_2_4_datasets/step=2500.ckpt"
+discriminative_reward_rhythm_model_path:
+  - "logs/discriminative_reward_no_augmentation_rhythm_4_datasets/step=3000.ckpt"
+  - "logs/discriminative_reward_no_augmentation_rhythm_2_4_datasets/step=3000.ckpt"
+
+# Reward weights
+contrastive_reward_weight: 1.0
+discriminative_reward_weight: 1.0
+contrastive_reward_rhythm_weight: 1.0
+discriminative_reward_rhythm_weight: 1.0
+gail_reward_weight: 1.0
+early_stop_penalty_weight: 1.0
+invalid_output_penalty_weight: 1.0
+silence_penalty_weight: 1.0
+long_note_penalty_weight: 0.0
+repetition_penalty_weight: 1.0
+
+anchor_model_path: "logs/enc_dec_base_melody_4_datasets/step=10000.ckpt"
+
+# realchords specific
+model_part: "melody"
+
+micro_rollout_batch_size: 384
+rollout_batch_size: 384
+micro_train_batch_size: 48
+train_batch_size: 48
+limit_eval_batches: 4
+
+entropy_loss_coef: 0.002
+
+save_steps: 100 # save actor every 100 steps
+eval_steps: 100 # evaluate every 100 steps
+
+num_steps: 1000
+
+# GAIL-specific settings
+gail_discriminative_model_configs:
+  dim: 512
+  depth: 8
+  heads: 8
+  dropout: 0.1
+
+gail_reward_learning_rate: !!float 9e-5
+reward_update_steps: 5 # update reward every n steps
+reward_update_early_stop_steps: 500
+enable_reward_label_smoothing: true
+gail_reward_formulation: "logits_prob_log"
+reward_update_strategy: "average"
+reward_average_steps: 3
+reward_update_threshold: 1.0
+reward_apply_threshold_after_steps: 200
+
+repetition_penalty_threshold: 4
+
+logits_vram_swap: true

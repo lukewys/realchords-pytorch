@@ -1,0 +1,42 @@
+$include:
+  - configs/gen_models/decoder_only_online_chord.yml
+  - configs/single_agent_rl/rl_realchords_base.yml
+
+pretrain_model_path: "logs/decoder_only_online_chord/step=11000.ckpt"
+contrastive_reward_model_path: 
+  - "logs/contrastive_reward/step=8000.ckpt"
+  - "logs/contrastive_reward_2/step=8000.ckpt"
+discriminative_reward_model_path:
+  - "logs/discriminative_reward_128_bs/step=1500.ckpt"
+  - "logs/discriminative_reward_128_bs_2/step=1500.ckpt"
+contrastive_reward_rhythm_model_path:
+  - "logs/contrastive_reward_no_augmentation_rhythm/step=2000.ckpt"
+  - "logs/contrastive_reward_no_augmentation_rhythm_2/step=2000.ckpt"
+discriminative_reward_rhythm_model_path:
+  - "logs/discriminative_reward_no_augmentation_rhythm/step=3000.ckpt"
+  - "logs/discriminative_reward_no_augmentation_rhythm_2/step=3000.ckpt"
+
+# Reward weights
+contrastive_reward_weight: 1.0
+discriminative_reward_weight: 1.0
+contrastive_reward_rhythm_weight: 1.0
+discriminative_reward_rhythm_weight: 1.0
+early_stop_penalty_weight: 1.0
+invalid_output_penalty_weight: 1.0
+silence_penalty_weight: 1.0
+long_note_penalty_weight: 0.0
+repetition_penalty_weight: 1.0
+
+anchor_model_path: "logs/enc_dec_base_chord/step=10000.ckpt"
+
+# realchords specific
+model_part: "chord"
+
+micro_rollout_batch_size: 384
+rollout_batch_size: 384
+micro_train_batch_size: 48
+train_batch_size: 48
+limit_eval_batches: 4
+repetition_penalty_threshold: 4
+
+num_steps: 1000
