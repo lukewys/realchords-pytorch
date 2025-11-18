@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "realjam"
+version = "1.0.0"
+description = "Lightweight real-time note-to-chord music accompaniment system"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Yusong Wu", email = "wuyusongwys@gmail.com"}
+]
+keywords = ["music", "ai", "accompaniment", "real-time accompaniment", "transformer"]
+dependencies = [
+    "torch",
+    "x-transformers==2.1.2",
+    "pretty_midi",
+    "tqdm",
+    "note_seq",
+    "argbind",
+    "flask",
+    "onnxruntime==1.21.0",
+    "onnx==1.17.0",
+    "numpy==1.26.4",
+    "pyopenssl",
+    "wget",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/lukewys/realchords-pytorch"
+Repository = "https://github.com/lukewys/realchords-pytorch"
+Documentation = "https://github.com/lukewys/realchords-pytorch/blob/main/README.md"
+
+[project.scripts]
+realjam-start-server = "realjam.cli:start_server"
+realjam-download-weights = "realjam.cli:download_weights"
+
+[tool.setuptools.packages.find]
+include = ["realjam*"]
+
+[tool.setuptools.package-data]
+realjam = ["frontend/*"]

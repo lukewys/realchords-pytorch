@@ -1,0 +1,12 @@
+torch
+x-transformers==2.1.2
+pretty_midi
+tqdm
+note_seq
+argbind
+flask
+onnxruntime==1.21.0
+onnx==1.17.0
+numpy==1.26.4
+pyopenssl
+wget
