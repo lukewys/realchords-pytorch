@@ -19,7 +19,7 @@ else:
 
 setup(
     name="realjam",
-    version="1.0.0",
+    version="1.0.1",
     author="Yusong Wu",
     author_email="wuyusongwys@gmail.com",
     description="Lightweight real-time music accompaniment system",
