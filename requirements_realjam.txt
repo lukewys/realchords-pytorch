@@ -1,5 +1,9 @@
 torch
-x-transformers==2.1.2
+
+# Pin x-transformers because of this regression:
+# https://github.com/lucidrains/x-transformers/issues/352
+x-transformers>=2.1.2,<=2.11.23
+
 pretty_midi
 tqdm
 note_seq

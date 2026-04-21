@@ -22,6 +22,10 @@ flask
 beautifulsoup4
 deepspeed==0.16.4
 bokeh==2.4.3
-x-transformers==2.1.2
+
+# Pin x-transformers because of this regression:
+# https://github.com/lucidrains/x-transformers/issues/352
+x-transformers>=2.1.2,<=2.11.23
+
 onnxruntime==1.21.0
 onnx==1.17.0
