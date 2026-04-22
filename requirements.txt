@@ -12,6 +12,9 @@ pandas
 scikit-learn
 seaborn
 pqdm
+vendi-score
+rapidfuzz
+pyyaml
 note_seq
 lightning
 wandb

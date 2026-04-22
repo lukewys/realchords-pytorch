@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 
 # Read the requirements from the requirements.txt file
 with open("requirements.txt") as f:
@@ -7,7 +7,7 @@ with open("requirements.txt") as f:
 setup(
     name="realchords",
     version="0.1.0",
-    packages=find_packages(),
+    packages=find_namespace_packages(include=["realchords", "realchords.*"]),
     install_requires=requirements,
     include_package_data=True,
     description="Opensource Pytorch implementation of ReaLchords",

@@ -23,6 +23,10 @@ Paper:
   - [GAPT Model](#gapt-model-trained-on-3-datasets-hooktheory-pop909-nottingham)
   - [RL Training](#rl-training)
   - [RL Training for Melody Model](#rl-training-for-melody-model)
+- [Sequence Generation and Evaluation](#sequence-generation-and-evaluation)
+  - [Generate Sequences](#generate-sequences)
+  - [Evaluate Harmony and Diversity](#evaluate-harmony-and-diversity)
+  - [Plot Chord Embedding t-SNE](#plot-chord-embedding-t-sne)
 - [Model Checkpoints](#model-checkpoints)
 - [Model Checkpoint Conversion for ReaLJam](#model-checkpoint-conversion-for-realjam)
 - [Citation](#citation)
@@ -313,6 +317,119 @@ python scripts/train_rl_ensemble_rhythm_reward_offline_anchor_gail.py \
   --args.load configs/single_agent_rl/rl_melody_gail_4_datasets.yml \
   --save_dir logs/rl_melody_gail_4_datasets
 ```
+
+## Sequence Generation and Evaluation
+
+This repository does not ship generated sequence tensors or evaluation outputs.
+To reproduce the open-source evaluation flow, first generate sequences from your
+own checkpoints, then run the evaluation scripts on those generated tensors.
+
+Prerequisites (all generation modes):
+
+- `scripts/generate_sequences.py` always loads MLE melody and MLE chord baselines
+  to compute social-influence KL for the generated sequences, regardless of the
+  selected `--mode`. Make sure `--mle_melody_model_path` and
+  `--mle_chord_model_path` point at existing checkpoints (download them from the
+  [huggingface page](https://huggingface.co/lukewys/realchords-pytorch/tree/main)
+  or train your own via the recipes above).
+- The evaluation scripts additionally require at least one contrastive reward
+  checkpoint referenced by the RL config you pass via `--config`.
+
+### Generate Sequences
+
+Use `scripts/generate_sequences.py` to create `.pt` tensors for downstream
+evaluation. The script supports model-vs-model MARL generation,
+data-conditioned generation, and agent switching.
+
+Example: model-vs-model generation
+
+```bash
+python scripts/generate_sequences.py \
+  --mode rl_melody_vs_rl_chord \
+  --rl_melody_model_path logs/rl_melody/actor.pth \
+  --rl_chord_model_path logs/gapt/actor.pth \
+  --save_dir logs/generated/gapt \
+  --num_batches 16
+```
+
+Example: data-conditioned generation with perturbation
+
+```bash
+python scripts/generate_sequences.py \
+  --mode melody_data_vs_rl_chord \
+  --rl_chord_model_path logs/gapt/actor.pth \
+  --dataset_name wikifonia \
+  --dataset_split test \
+  --data_perturbation multiple_transpose \
+  --save_dir logs/generated/gapt_ood \
+  --num_batches -1
+```
+
+Output formats:
+
+- Model-vs-model and switching modes write `<mode>_generated_chord_order.pt` and `<mode>_generated_melody_order.pt` plus matching KL tensors.
+- Data-conditioned modes write `<mode>_generated.pt` and `<mode>_kl.pt`.
+- Data-only mode (`melody_data_vs_chord_data`) writes `<mode>_generated_chord_order.pt`.
+- Each generated tensor is a rank-2 integer tensor with one sequence per row.
+
+### Evaluate Harmony and Diversity
+
+Use `scripts/evaluate_generated_sequences.py` as the public entry point for the
+Figure 4 evaluation chain. It computes note-in-chord harmony, rule-based
+penalties, chord entropy, and Vendi score, then aggregates them into one summary
+JSON.
+
+```bash
+python scripts/evaluate_generated_sequences.py \
+  --system "Online MLE=logs/generated/online_mle" \
+  --system "ReaLchords=logs/generated/realchords" \
+  --system "GAPT w/o Adv.=logs/generated/gapt_no_gail" \
+  --system "GAPT=logs/generated/gapt" \
+  --analysis_root logs/figure4_eval \
+  --summary_path logs/figure4_eval/summary.json \
+  --config configs/single_agent_rl/realchords.yml
+```
+
+Intermediate artifacts:
+
+- `<analysis_root>/<system>/penalties/.../note_in_chord_ratio.pt`: one harmony score per sequence.
+- `<analysis_root>/<system>/penalties/.../per_beat_note_in_chord_ratio.pt`: a dict with `per_beat_ratio` shaped `[num_sequences, max_beats]`.
+- `<analysis_root>/<system>/penalties/.../penalties.pt`: a dict containing long-note and repetition penalties plus event counts.
+- `<analysis_root>/<system>/diversity/.../chord_frequency.json`: decoded chord counts and probabilities.
+- `<analysis_root>/<system>/diversity/.../diversity_metrics.json`: per-file entropy, Vendi score, embedding count, and checkpoint metadata.
+- `--summary_path`: combined system-level metrics and the source tensor list used for each system.
+
+If you only need the combined summary JSON and do not want the per-file
+artifacts, add `--skip_intermediate_artifacts`.
+
+### Plot Chord Embedding t-SNE
+
+Use `scripts/plot_chord_embedding_tsne.py` to compare chord-sequence embeddings
+between two or more generated systems. You can either point it at a summary JSON
+produced by `scripts/evaluate_generated_sequences.py`, or pass groups directly.
+
+Example: read systems from the evaluation summary
+
+```bash
+python scripts/plot_chord_embedding_tsne.py \
+  --summary logs/figure4_eval/summary.json \
+  --group_from_summary "GAPT w/o Adv." \
+  --group_from_summary "GAPT" \
+  --output_plot logs/figure4_eval/ours_vs_ours_no_gail_chord_embedding_tsne.png \
+  --output_coordinates logs/figure4_eval/ours_vs_ours_no_gail_chord_embedding_tsne.json
+```
+
+Example: compare two generated folders directly
+
+```bash
+python scripts/plot_chord_embedding_tsne.py \
+  --group "GAPT w/o Adv.=logs/generated/gapt_no_gail" \
+  --group "GAPT=logs/generated/gapt" \
+  --output_plot logs/figure4_eval/ours_vs_ours_no_gail_chord_embedding_tsne.png
+```
+
+The script writes a PNG scatter plot and a JSON file with the t-SNE coordinates
+for every embedded sequence.
 
 ## Model Checkpoints
 
