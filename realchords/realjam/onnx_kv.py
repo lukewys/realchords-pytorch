@@ -37,6 +37,17 @@ def _build_packed_prompt(
     return packed
 
 
+def _build_curr_sequence(
+    prompt_np: np.ndarray,
+    generated: list[np.ndarray],
+) -> torch.Tensor:
+    if generated:
+        full_sequence = np.concatenate([prompt_np, *generated], axis=1)
+    else:
+        full_sequence = prompt_np
+    return torch.from_numpy(full_sequence)
+
+
 # ------------------------- main API ---------------------------------
 def generate_tokens(
     session_init: ort.InferenceSession,
@@ -75,6 +86,11 @@ def generate_tokens(
     bsz = prompt_ids.shape[0]
     filter_kwargs = filter_kwargs or {}
 
+    if torch.is_tensor(prompt_ids):
+        prompt_np = prompt_ids.cpu().numpy()
+    else:
+        prompt_np = prompt_ids
+
     # ---- first frame ------------------------------------------------
     packed = _build_packed_prompt(prompt_ids, max_len)
     logits, *_, kv0, kv1, _ = session_init.run(None, {"gen_inputs": packed})
@@ -90,15 +106,12 @@ def generate_tokens(
 
         # apply caller-supplied filter (e.g. top_k helper)
         if filter_logits_fn is not None:
+            curr_sequence = _build_curr_sequence(prompt_np, generated)
             torch_logits = filter_logits_fn(
                 torch_logits,
                 curr_sample_step=step,
-                curr_sample_length=len(generated),
-                curr_sequence=(
-                    torch.from_numpy(np.concatenate(generated, axis=1))
-                    if generated
-                    else None
-                ),
+                curr_sample_length=curr_sequence.shape[1],
+                curr_sequence=curr_sequence,
                 **filter_kwargs,
             )
 
@@ -201,15 +214,12 @@ def generate_tokens_online(
 
             # Apply caller-supplied filter
             if filter_logits_fn is not None:
+                curr_sequence = _build_curr_sequence(prompt_np, generated)
                 torch_logits = filter_logits_fn(
                     torch_logits,
                     curr_sample_step=step,
-                    curr_sample_length=len(generated),
-                    curr_sequence=(
-                        torch.from_numpy(np.concatenate(generated, axis=1))
-                        if generated
-                        else None
-                    ),
+                    curr_sample_length=curr_sequence.shape[1],
+                    curr_sequence=curr_sequence,
                     **filter_kwargs,
                 )
 
@@ -228,15 +238,12 @@ def generate_tokens_online(
                 torch_logits = torch.from_numpy(step_logits.astype(np.float32))
 
                 if filter_logits_fn is not None:
+                    curr_sequence = _build_curr_sequence(prompt_np, generated)
                     torch_logits = filter_logits_fn(
                         torch_logits,
                         curr_sample_step=step,
-                        curr_sample_length=len(generated),
-                        curr_sequence=(
-                            torch.from_numpy(np.concatenate(generated, axis=1))
-                            if generated
-                            else None
-                        ),
+                        curr_sample_length=curr_sequence.shape[1],
+                        curr_sequence=curr_sequence,
                         **filter_kwargs,
                     )
 

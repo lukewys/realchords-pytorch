@@ -11,6 +11,7 @@ Paper:
 
 - [Setup and Play ReaLJam](#setup-and-play-realjam)
   - [ONNX Speedup for ReaLJam Server](#onnx-speedup-for-realjam-server)
+  - [MLX Backend for ReaLJam Server](#mlx-backend-for-realjam-server)
   - [Start ReaLJam Server via this Codebase](#start-realjam-server-via-this-codebase)
 - [Setup Model Training and Development](#setup-model-training-and-development)
 - [Dataset](#dataset)
@@ -48,6 +49,10 @@ You can set the port (default: 8080) and whether to use SSL by:
 
 You should include `--ssl` if you want to run the backend on a server. In that case, you can access ReaLJam by visiting `http://server_ip:8080` (replace `server_ip` with your server's IP address).
 
+If you are using a MacBook or Mac with Apple Silicon (M-series chip), you can also run the ReaLJam server with the MLX backend via:
+
+`realjam-start-server --port 1234 --ssl --mlx`
+
 The interface of ReaLJam is as follows. We support both MIDI keyboard as input and computer keyboard (see the letters labeled on piano keys). Select your MIDI input source from the upper right. Begin jamming by clicking "Start Live Session", and the model will start to accompany you after `Initial Beats of Silence` beats (default: 8). You can also adjust `Lookahead Beats` and `Commit Beats` to control how far into the future the model will generate and how much of the future buffer is kept fixed. You can select different models from the `Model` drop-down menu.
 
 For more details on how ReaLJam works, please see our [paper](https://arxiv.org/abs/2502.21267).
@@ -56,9 +61,13 @@ For more details on how ReaLJam works, please see our [paper](https://arxiv.org/
 
 We also support ONNX speedup that allows you to run models faster on both CPU and GPU. You can replace the PyTorch model with an ONNX model via `realjam-start-server --port 1234 --ssl --onnx`. When a CUDA device is detected, the ONNX model (as well as the PyTorch model) will run on the CUDA device by default. You can adjust this using `onnx_provider`. See `realjam-start-server -h` for details.
 
+### MLX Backend for ReaLJam Server
+
+We also support an MLX backend for ReaLJam. If you are using a MacBook or Mac with Apple Silicon (M-series chip), you can start it with `realjam-start-server --port 1234 --ssl --mlx`. This backend is intended for Apple Silicon Macs where `mlx` is available, and `--onnx` and `--mlx` are mutually exclusive.
+
 ### Start ReaLJam server via this codebase
 
-You can start the ReaLJam server via this codebase rather than using the `realjam-start-server` command in the `realjam` package by running `python -m realchords.realjam.server --port 1234 --ssl`. This will start the server on the port 1234 with SSL enabled.
+You can start the ReaLJam server via this codebase rather than using the `realjam-start-server` command in the `realjam` package by running `python -m realchords.realjam.server --port 1234 --ssl`. This will start the server on the port 1234 with SSL enabled. The same entry point also supports `--onnx` and `--mlx`.
 
 
 ## Setup Model Training and Development

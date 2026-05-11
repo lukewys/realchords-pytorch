@@ -22,6 +22,11 @@ from realchords.model.gen_model import (
     DecoderTransformer,
     EncoderDecoderTransformer,
 )
+from realchords.realjam.mlx_models import (
+    MLXDecoderTransformer,
+    MLXEncoderDecoderTransformer,
+    MLX_IMPORT_ERROR,
+)
 from realchords.constants import (
     CHORD_OCTAVE,
     ZERO_OCTAVE,
@@ -83,6 +88,21 @@ MODEL_PATHS = {
         "step=11000.ckpt",
     ),
 }
+
+ONLINE_MODEL_CANDIDATES = [ONLINE_MODEL_PATH]
+OFFLINE_MODEL_CANDIDATES = [OFFLINE_MODEL_PATH]
+MODEL_PATH_CANDIDATES = {
+    model_name: [model_path] for model_name, model_path in MODEL_PATHS.items()
+}
+
+
+def _resolve_existing_path(candidates: List[str]) -> str:
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    raise FileNotFoundError(
+        f"Could not find any checkpoint from candidates: {candidates}"
+    )
 
 
 def download_checkpoints(
@@ -203,6 +223,7 @@ class Agent:
     def __init__(
         self,
         onnx: bool = False,
+        mlx: bool = False,
         provider=None,
         compile: bool = True,
         auto_download: bool = True,
@@ -211,10 +232,14 @@ class Agent:
 
         Args:
             onnx: Whether to use ONNX runtime for inference.
+            mlx: Whether to use the MLX backend for inference.
             provider: ONNX execution provider (e.g., 'CUDAExecutionProvider', 'CPUExecutionProvider').
             compile: Whether to compile the model with torch.compile.
             auto_download: Whether to automatically download checkpoints if they don't exist.
         """
+        if onnx and mlx:
+            raise ValueError("ONNX and MLX backends are mutually exclusive")
+
         logging.info("Creating model...")
 
         # Check if checkpoints exist, download if needed
@@ -243,6 +268,7 @@ class Agent:
 
         self.compile = compile
         self.onnx = onnx
+        self.mlx = mlx
         self.max_frames = 256
 
         # Create tokenizer
@@ -255,49 +281,27 @@ class Agent:
         self.tokenizer = tokenizer
 
         # Load non-causal (offline) model
-        self.enc_dec_model_path = OFFLINE_MODEL_PATH
-        self.non_causal_model = load_gen_model_from_state_dict(
-            self.enc_dec_model_path,
-            EncoderDecoderTransformer,
-            compile=False,
-            override_args={
-                "EncoderDecoderTransformer.enc_num_tokens": tokenizer.num_tokens,
-                "EncoderDecoderTransformer.dec_num_tokens": tokenizer.num_tokens,
-                "EncoderDecoderTransformer.pad_value": tokenizer.pad_token,
-            },
+        self.enc_dec_model_path = _resolve_existing_path(
+            OFFLINE_MODEL_CANDIDATES
+        )
+        self.non_causal_model = self._load_offline_model(
+            self.enc_dec_model_path
         )
         self.non_causal_model = self._prepare_model(self.non_causal_model)
 
-        self.mle_model = load_gen_model_from_state_dict(
-            ONLINE_MODEL_PATH,
-            DecoderTransformer,
-            compile=False,
-            override_args={
-                "DecoderTransformer.num_tokens": tokenizer.num_tokens,
-                "DecoderTransformer.pad_value": tokenizer.pad_token,
-            },
+        self.mle_model = self._load_online_model(
+            _resolve_existing_path(ONLINE_MODEL_CANDIDATES)
         )
 
         self.models = {}
-        for model_name, model_path in MODEL_PATHS.items():
+        for model_name, candidates in MODEL_PATH_CANDIDATES.items():
+            model_path = _resolve_existing_path(candidates)
 
             if ".pth" not in os.path.basename(model_path):
-                model = load_gen_model_from_state_dict(
-                    model_path,
-                    DecoderTransformer,
-                    compile=False,
-                    override_args={
-                        "DecoderTransformer.num_tokens": tokenizer.num_tokens,
-                        "DecoderTransformer.pad_value": tokenizer.pad_token,
-                    },
-                )
+                model = self._load_online_model(model_path)
 
             else:
-                model = load_rl_model(
-                    model_path,
-                    copy.deepcopy(self.mle_model),
-                    compile=False,
-                )
+                model = self._load_online_model(model_path, is_rl=True)
 
             model = self._prepare_model(model)
 
@@ -451,11 +455,76 @@ class Agent:
         Args:
           model: the model to prepare
         """
+        if self.mlx:
+            model.eval()
+            return model
         model.eval()
         model.to(self.device)
         if self.compile:
             model = torch.compile(model)
         return model
+
+    def _load_online_model(self, model_path: str, is_rl: bool = False):
+        override_args = {
+            "DecoderTransformer.num_tokens": self.tokenizer.num_tokens,
+            "DecoderTransformer.pad_value": self.tokenizer.pad_token,
+        }
+
+        if self.mlx:
+            if MLXDecoderTransformer is None:
+                raise ImportError(
+                    "MLX backend requested, but MLX could not be imported"
+                ) from MLX_IMPORT_ERROR
+            if is_rl:
+                return MLXDecoderTransformer.from_rl_checkpoint(
+                    model_path,
+                    self.tokenizer,
+                    override_args=override_args,
+                )
+            return MLXDecoderTransformer.from_checkpoint(
+                model_path,
+                self.tokenizer,
+                override_args=override_args,
+            )
+
+        if is_rl:
+            return load_rl_model(
+                model_path,
+                copy.deepcopy(self.mle_model),
+                compile=False,
+            )
+
+        return load_gen_model_from_state_dict(
+            model_path,
+            DecoderTransformer,
+            compile=False,
+            override_args=override_args,
+        )
+
+    def _load_offline_model(self, model_path: str):
+        override_args = {
+            "EncoderDecoderTransformer.enc_num_tokens": self.tokenizer.num_tokens,
+            "EncoderDecoderTransformer.dec_num_tokens": self.tokenizer.num_tokens,
+            "EncoderDecoderTransformer.pad_value": self.tokenizer.pad_token,
+        }
+
+        if self.mlx:
+            if MLXEncoderDecoderTransformer is None:
+                raise ImportError(
+                    "MLX backend requested, but MLX could not be imported"
+                ) from MLX_IMPORT_ERROR
+            return MLXEncoderDecoderTransformer.from_checkpoint(
+                model_path,
+                self.tokenizer,
+                override_args=override_args,
+            )
+
+        return load_gen_model_from_state_dict(
+            model_path,
+            EncoderDecoderTransformer,
+            compile=False,
+            override_args=override_args,
+        )
 
     def gen_online_model(
         self,
@@ -669,7 +738,7 @@ class Agent:
         )
         logging.info(f"{prefix} Generated: %s", generated_commit)
 
-        if not self.onnx:
+        if not self.onnx and not self.mlx:
             generated_commit = generated_commit.cpu().numpy()
             generated_commit_tensor = torch.tensor(
                 generated_commit, device=prompt.device

@@ -76,6 +76,9 @@ def main() -> None:
         "--onnx", action="store_true", help="Use ONNX model instead of PyTorch"
     )
     parser.add_argument(
+        "--mlx", action="store_true", help="Use MLX model instead of PyTorch"
+    )
+    parser.add_argument(
         "--onnx_provider",
         type=str,
         default=None,
@@ -89,7 +92,14 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
-    agent = agent_interface.Agent(onnx=args.onnx, provider=args.onnx_provider)
+    if args.onnx and args.mlx:
+        parser.error("--onnx and --mlx cannot be used together")
+
+    agent = agent_interface.Agent(
+        onnx=args.onnx,
+        mlx=args.mlx,
+        provider=args.onnx_provider,
+    )
 
     ssl_context = "adhoc" if args.ssl else None
     app.run(
